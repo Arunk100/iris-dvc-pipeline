@@ -1,0 +1,58 @@
+name: Model CI
+on:
+  push:
+    branches:
+      - main
+      - dev
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Node.js for CML
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install CML
+        if: github.event_name == 'pull_request'
+        run: npm install -g @dvcorg/cml
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Authenticate DVC with GCS
+        run: |
+          echo '${{ secrets.GCP_KEY }}' > key.json
+          dvc remote modify gcs-remote credentialpath key.json
+
+      - name: Pull DVC data
+        run: |
+          dvc pull
+
+      - name: Run tests and generate report
+        run: |
+          pytest --md report.md
+
+      - name: Create CML report on Pull Request
+        if: github.event_name == 'pull_request'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cml comment create report.md
