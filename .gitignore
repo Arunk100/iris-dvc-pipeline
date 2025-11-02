@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+*.egg-info/
+
+# DVC - Ignore the actual data and models
+/data/iris.csv
+/model.pkl
+
+# Credentials - Never commit secrets!
+key.json
+
+# IDE
+.vscode/
+.idea/

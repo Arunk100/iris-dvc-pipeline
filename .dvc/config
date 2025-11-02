@@ -1,0 +1,5 @@
+[core]
+    remote = gcs-remote
+['remote "gcs-remote"']
+    url = gs://week22_dvc_iris_bucket
+    credentialpath = ../key.json
