@@ -1,0 +1,34 @@
+name: Model CI
+
+# Run this workflow on push to main or dev branches
+on:
+  push:
+    branches:
+      - main
+      - dev
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest # Use a standard Ubuntu runner
+    
+    steps:
+      # Step 1: Check out your repository's code
+      - name: Checkout repo
+        uses: actions/checkout@v4
+      
+      # Step 2: Set up the Python version
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10' # Match the Python version from your Dockerfile
+      
+      # Step 3: Install all necessary dependencies
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest pytest-mock # Install testing libraries
+      
+      # Step 4: Run the tests from the 'tests' directory
+      - name: Run tests
+        run: pytest tests/

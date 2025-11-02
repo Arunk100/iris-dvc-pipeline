@@ -1,0 +1,69 @@
+name: Build and Deploy to GKE
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  # --- YOUR PROJECT DETAILS ---
+  # Make sure these are correct for your project!
+  PROJECT_ID: wired-victor-473717-q1
+  GKE_CLUSTER: iris-cluster
+  GKE_ZONE: us-central1-a
+  REPOSITORY: iris-fastapi
+  IMAGE_NAME: iris-api
+  REGISTRY_HOSTNAME: us-central1-docker.pkg.dev
+  # ----------------------------
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: 'read'
+      id-token: 'write'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --- THIS SECTION IS NOW UPDATED ---
+      - name: Authenticate to Google Cloud
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/818362480917/locations/global/workloadIdentityPools/github-pool/providers/github-provider'
+          service_account: 'github-actions-deployer@wired-victor-473717-q1.iam.gserviceaccount.com'
+      # ------------------------------------
+
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Configure Docker for Artifact Registry
+        run: gcloud auth configure-docker ${{ env.REGISTRY_HOSTNAME }} --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.REGISTRY_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            -t ${{ env.REGISTRY_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest .
+
+      - name: Push image to Google Artifact Registry
+        run: |
+          docker push ${{ env.REGISTRY_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+          docker push ${{ env.REGISTRY_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:latest
+
+      - name: Get GKE credentials
+        run: gcloud container clusters get-credentials ${{ env.GKE_CLUSTER }} --zone ${{ env.GKE_ZONE }}
+
+      - name: Deploy to GKE
+        run: |
+          kubectl set image deployment/iris-api iris-api=${{ env.REGISTRY_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }} \
+          || \
+          kubectl create deployment iris-api --image=${{ env.REGISTRY_HOSTNAME }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      - name: Expose deployment
+        run: |
+          kubectl expose deployment iris-api --type=LoadBalancer --port=80 --target-port=8081 \
+          || \
+          echo "Service 'iris-api' already exists. Skipping exposure."

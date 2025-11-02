@@ -1,0 +1,11 @@
+# For FastAPI
+fastapi
+uvicorn[standard]
+pydantic
+
+# For MLflow & Model Loading
+mlflow
+pandas
+scikit-learn
+gcsfs
+requests
