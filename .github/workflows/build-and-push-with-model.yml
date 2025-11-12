@@ -23,7 +23,7 @@ jobs:
         python-version: '3.9'
 
     - name: Install DVC
-      run: pip install dvc[gdrive,gcs] # Install DVC with GCS support
+      run: pip install dvc dvc-gcs # Install DVC and GCS support 
 
     - name: Authenticate Google Cloud
       uses: 'google-github-actions/auth@v1'
