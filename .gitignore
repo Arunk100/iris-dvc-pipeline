@@ -6,7 +6,6 @@ __pycache__/
 
 # DVC - Ignore the actual data and models
 /data/iris.csv
-/model.pkl
 
 # Credentials - Never commit secrets!
 key.json
