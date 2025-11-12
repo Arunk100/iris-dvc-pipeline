@@ -22,7 +22,7 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Install DVC and GCS
+    - name: Install DVC with GCS support
       run: pip install dvc[gcs] # Installs DVC and the Google Cloud plugin
 
     - name: Authenticate Google Cloud
@@ -40,10 +40,10 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GHCR_TOKEN }} # Your token with package:write scope
 
-    - name: Build and push Docker image
+    - name: Build and push Docker image (uncached)
       uses: docker/build-push-action@v4
       with:
         context: .
         push: true
         tags: ghcr.io/arunk100/iris-dvc-pipeline:latest # Make sure 'arunk100' is lowercase
-        no-cache: true  # <--- ADD THIS LINE
+        no-cache: true # Forces a fresh build
