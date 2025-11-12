@@ -6,3 +6,8 @@ pandas
 pytest-md
 flask
 gunicorn
+flask
+scikit-learn
+pandas
+joblib
+dvc
