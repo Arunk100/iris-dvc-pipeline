@@ -1,106 +1,48 @@
-name: Build, generate model, and push image (with DVC/GCS auth)
+name: Build and Push with Model
 
-# allow manual dispatch and trigger on push (so your commits will run it)
 on:
-  workflow_dispatch:
   push:
-    branches: [ dev ]
     branches:
-      - dev
-
-permissions:
-  contents: read
-  packages: write
+      - dev  # Or 'main', depending on your branch
 
 jobs:
-  build:
+  build-and-push:
     runs-on: ubuntu-latest
-    env:
-      IMAGE: ghcr.io/arunk100/iris-dvc-pipeline:latest
+    
+    permissions:
+      contents: read
+      packages: write # Required to push to GHCR
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-      - name: Set up Python 3.10
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
 
-<<<<<<< HEAD
-      - name: Install DVC & Python deps
-        run: |
-          python -m pip install --upgrade pip
-          pip install "dvc[gs]==3.50.1" scikit-learn pandas joblib
+    - name: Install DVC
+      run: pip install dvc[gdrive,gcs] # Install DVC with GCS support
 
-      - name: Diagnostic - show repo files
-        run: |
-          echo "Listing top-level files"
-          ls -la
+    - name: Authenticate Google Cloud
+      uses: 'google-github-actions/auth@v1'
+      with:
+        credentials_json: '${{ secrets.GCP_SA_KEY }}' # Your DVC puller secret
 
-      - name: DVC pull (force overwrite existing files)
-        run: |
-          # Force allows overwriting files that already exist in the workspace
-          dvc pull --force
+    - name: Pull DVC data
+      run: dvc pull
+      
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v2
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ secrets.GHCR_TOKEN }} # Your token with package:write scope
 
-      - name: Build image (no-cache for reproducibility)
-        env:
-          IMAGE: ghcr.io/arunk100/iris-dvc-pipeline:latest
-        run: |
-          docker build --no-cache -t "${IMAGE}" .
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u arunk100 --password-stdin
-          docker push "${IMAGE}"
-
-      - name: (optional) kubectl deploy / smoke test
-        if: false
-        run: |
-          # optional: put kubectl commands here if you want Actions to deploy
-          echo "Add deployment steps here if desired"
-=======
-      - name: Install DVC (GCS extras)
-        run: python -m pip install --upgrade pip && python -m pip install "dvc[gs]"
-
-      - name: Authenticate to GCP (service account)
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
-
-      - name: Write GCP key file and export GOOGLE_APPLICATION_CREDENTIALS
-        env:
-          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-        run: |
-          echo "$GCP_SA_KEY" > gcp-key.json
-          echo "GOOGLE_APPLICATION_CREDENTIALS=$(pwd)/gcp-key.json" >> $GITHUB_ENV
-
-      - name: dvc pull (force) from GCS
-        run: |
-          dvc pull --force
-        # if your repo uses DVC remote config in another path, ensure it is present
-
-      - name: Show workspace files (diagnostic)
-        run: ls -la || true
-
-      - name: Install runtime requirements
-        run: python -m pip install --upgrade pip && python -m pip install -r requirements.txt
-
-      - name: Build docker image (no-cache)
-        run: docker build --no-cache -t "${IMAGE}" .
-
-      - name: Login to GHCR
-        env:
-          GHCR_TOKEN: ${{ secrets.GHCR_TOKEN }}
-        run: |
-          echo "$GHCR_TOKEN" | docker login ghcr.io -u arunk100 --password-stdin
-
-      - name: Push image to GHCR
-        run: docker push "${IMAGE}"
-
-      # optional: deploy to k8s if you have kubeconfig secret or set up access
-      # - name: Deploy to GKE (optional)
-      #   uses: google-github-actions/get-gke-credentials@v1
-      #   with:
-      #     cluster_name: iris-cluster
-      #     location: us-central1-c
-      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
-      # - run: kubectl set image deployment/iris-classifier iris=${{ env.IMAGE }} --record
->>>>>>> 3a688d4a08fba9a2367c9e4572b3c974c20b8daf
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: .
+        push: true
+        tags: ghcr.io/arunk100/iris-dvc-pipeline:latest # Make sure 'arunk100' is lowercase
