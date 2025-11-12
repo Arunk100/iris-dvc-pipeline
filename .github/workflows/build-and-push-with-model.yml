@@ -1,0 +1,64 @@
+name: Build, generate model, and push image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install scikit-learn pandas joblib
+
+      - name: Generate model.pkl and iris.csv
+        run: |
+          mkdir -p data
+          cat > create_model.py <<'PY'
+          from sklearn.datasets import load_iris
+          from sklearn.ensemble import RandomForestClassifier
+          import pandas as pd, joblib
+          iris = load_iris()
+          X, y = iris.data, iris.target
+          df = pd.DataFrame(X, columns=iris.feature_names)
+          df["target"] = y
+          df.to_csv("data/iris.csv", index=False)
+          clf = RandomForestClassifier(n_estimators=100, random_state=42)
+          clf.fit(X, y)
+          joblib.dump(clf, "model.pkl")
+          print("✅ model.pkl and data/iris.csv generated successfully")
+          PY
+          python create_model.py
+          ls -lh model.pkl data/iris.csv
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GHCR_TOKEN }}
+
+      - name: Build and push image to GHCR
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.IMAGE }}
+          file: Dockerfile
