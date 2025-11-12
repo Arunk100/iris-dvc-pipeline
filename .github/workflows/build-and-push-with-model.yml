@@ -46,3 +46,4 @@ jobs:
         context: .
         push: true
         tags: ghcr.io/arunk100/iris-dvc-pipeline:latest # Make sure 'arunk100' is lowercase
+        no-cache: true  # <--- ADD THIS LINE
