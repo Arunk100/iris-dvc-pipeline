@@ -22,8 +22,8 @@ jobs:
       with:
         python-version: '3.9'
 
-    - name: Install DVC
-      run: pip install dvc dvc-gcs # Install DVC and GCS support 
+    - name: Install DVC and GCS
+      run: pip install dvc dvc-gcs # Installs DVC and the Google Cloud plugin
 
     - name: Authenticate Google Cloud
       uses: 'google-github-actions/auth@v1'
@@ -31,9 +31,8 @@ jobs:
         credentials_json: '${{ secrets.GCP_SA_KEY }}' # Your DVC puller secret
 
     - name: Pull DVC data
-      run: dvc pull --force
+      run: dvc pull --force # Use --force to overwrite placeholders
 
-      
     - name: Log in to GitHub Container Registry
       uses: docker/login-action@v2
       with:
