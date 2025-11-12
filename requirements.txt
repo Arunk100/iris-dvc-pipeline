@@ -11,3 +11,4 @@ scikit-learn
 pandas
 joblib
 dvc
+flask
