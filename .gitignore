@@ -1,0 +1,12 @@
+# do NOT commit MLflow run artifacts or DBs
+mlruns/
+mlflow.db
+*.sqlite
+*.tar.gz
+*.png
+*.jpg
+*.jpeg
+*.pkl
+*.joblib
+__pycache__/
+.venv/
